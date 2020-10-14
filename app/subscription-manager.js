@@ -6,6 +6,7 @@ const assert = require("assert");
 const logger = require("./util/logger");
 const Subscription = require("./model/subscription");
 const Plan = require("./model/plan");
+const invoiceManager = require("./invoice-manager");
 
 const NEW_BATCH_LIMIT = parseInt(process.env.NEW_BATCH_LIMIT || 100);
 const FUTURE_BATCH_LIMIT = parseInt(process.env.FUTURE_BATCH_LIMIT || 100);
@@ -22,7 +23,11 @@ function incrementDate(date, amount, unit) {
     return incrementer(date, amount);
 }
 
-function updateState(subscription, plan, now) {
+async function dispatch(invoice) {
+    await invoice.save();
+}
+
+async function updateState(subscription, plan, now) {
     const activateTrial = () => {
         subscription.status = "in_trial";
         subscription.trialStartedAt = now;
@@ -80,6 +85,8 @@ function updateState(subscription, plan, now) {
             } else {
                 subscription.status = "future";
             }
+            const invoice = await invoiceManager.createInitial(subscription);
+            await dispatch(invoice);
             break;
         }
 
@@ -142,11 +149,11 @@ async function updateBatchState(status, query, limit) {
     const planByIds = {};
     plans.forEach((plan) => (planByIds[plan.id] = plan));
 
-    subscriptions.forEach((subscription) => {
+    subscriptions.forEach(async (subscription) => {
         try {
             const now = new Date();
             const plan = planByIds[subscription.planId];
-            updateState(subscription, plan, now);
+            await updateState(subscription, plan, now);
             logger.info(`Updated subscription "${subscription.id}"`);
             subscription.save();
         } catch (error) {

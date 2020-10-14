@@ -12,6 +12,7 @@
         "date-fns": "^2.16.1",
         "dotenv": "^8.2.0",
         "mongoose": "^5.10.7",
+        "redis": "^3.0.2",
         "winston": "^3.3.3"
     },
     "devDependencies": {
